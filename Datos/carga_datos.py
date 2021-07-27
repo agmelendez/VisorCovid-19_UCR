@@ -10,7 +10,7 @@ from notificador import Notificador
 import sys
         
 # Establecer en True para cargar todos los datos desde cero, e imprimir logs
-DEBUG = True
+DEBUG = False
 
 def consoleLog(text):
     if DEBUG:
@@ -470,15 +470,15 @@ def main(argv):
 def cargarDatos(archivoCovid, archivoEscenarios):
     print("Inicio de carga: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     try:
-        # ultimaFecha = getLastDate()[0].strftime('%Y-%m-%d')
-        # consoleLog("Ultima fecha en la BD: " + str(ultimaFecha))
-        # cargarCasos(archivoCovid, ultimaFecha)
-        # archivoCasosDiarios = pd.read_excel(archivoCovid, header= None, sheet_name="DistritosNuevos")
-        # cargarCasosDiarios(archivoCasosDiarios, ultimaFecha)
-        # cargarDatosPais(archivoCovid, ultimaFecha)
-        # cargarCoefVar(archivoCovid, ultimaFecha)
-        # cargarEscenarios(archivoEscenarios)
-        cargarCapasProyecciones()
+        ultimaFecha = getLastDate()[0].strftime('%Y-%m-%d')
+        consoleLog("Ultima fecha en la BD: " + str(ultimaFecha))
+        cargarCasos(archivoCovid, ultimaFecha)
+        archivoCasosDiarios = pd.read_excel(archivoCovid, header= None, sheet_name="DistritosNuevos")
+        cargarCasosDiarios(archivoCasosDiarios, ultimaFecha)
+        cargarDatosPais(archivoCovid, ultimaFecha)
+        cargarCoefVar(archivoCovid, ultimaFecha)
+        cargarEscenarios(archivoEscenarios)
+        # cargarCapasProyecciones()
     except Exception as e:
         consoleLog("Ha ocurrido un error al cargar los datos: " + str(e))
         noti = Notificador()
