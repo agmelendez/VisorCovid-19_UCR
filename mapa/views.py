@@ -88,7 +88,6 @@ def home ( request ):
 	context = {'geoJson':get_prov() }
 	return render(request, 'mapa/geo3.html', context)
 	
-	
 def getPrediccionesMapa(request):
     response = {}
     mes = request.GET.get('mes')
@@ -110,4 +109,11 @@ def getDatosPais(request):
 def getValidDates(request):
     response = {}
     response['fechas'] = getFechasValidas()
+    return JsonResponse(response)
+
+def getProyecciones(request):
+    response = {}
+    fecha = request.GET.get('fecha')
+    muestra = request.GET.get('muestra')
+    response['proyecciones'] = obtenerProyecciones(fecha, muestra)
     return JsonResponse(response)

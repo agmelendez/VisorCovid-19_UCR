@@ -21,5 +21,6 @@ urlpatterns= [
 	path( 'getUltimaFecha', views.getUltimaFecha, name="getUltimaFecha"),
 	path( 'getDatosPais', views.getDatosPais, name="getDatosPais"),
 	path( 'getValidDates', views.getValidDates, name="getValidDates"),
+	path( 'getProyecciones', views.getProyecciones, name="getProyecciones"),
 	url(r'^$', views.home, name="home")
 ]

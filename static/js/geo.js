@@ -15,6 +15,10 @@ const LAYER_HOGARES = 7;
 const LAYER_INDIGENAS = 8;
 const LAYER_FUENTES = 9;
 const LAYER_MORBILIDAD = 10;
+const LAYER_PROY_DIST_15 = 11;
+const LAYER_PROY_DIST_20 = 12;
+const LAYER_PROY_DIST_40 = 13;
+const LAYER_PROY_DIST_50 = 14;
 
 /* Variables globales */
 var _selectedProvince;
@@ -113,8 +117,6 @@ function getPredicciones(semana){
 
 function onEachFeature(feature, layer) {
   if (feature.properties && feature.properties.nombre) {
-    var popupContent = "Nombre: " + feature.properties.nombre;
-    layer.bindTooltip(popupContent);
     layer.on("click", function (event) {
       if (feature.properties.nombre == _selectedDistrito) {
         if (_selectedLayer == LAYER_ALERTA) {
@@ -490,8 +492,6 @@ function poner_hogares_mapa(map, hogarJSON) {
   map.addLayer(_layerHogares);
 }
 
-
-
 function poner_indigenas_mapa(map, indigenaJSON) {
   var myIcon = L.icon({
     iconUrl:
@@ -518,6 +518,41 @@ function poner_indigenas_mapa(map, indigenaJSON) {
   if (_layerIndigenas != null) _layerIndigenas.addData(indigenaJSON);
 	map.addLayer(_layerIndigenas);
 
+}
+
+/**
+ * Configura las capas de proyecciones sobre el mapa según la fecha seleccionada y la cantidad de distritos de muestra en el select.
+ * @param {*} muestra Cantidad de distritos muestreados para proyección: 15, 20, 40 o 50.
+ */
+function ponerProyecciones(muestra){
+  let url = "getProyecciones";
+  $.get(url, { fecha: _fechaActual, muestra: muestra }, function (result) {
+    let proyecciones = result.proyecciones;
+    let dist_actual;
+    _layer_actual.eachLayer(function (layer) {
+      dist_actual = layer.feature.properties.codigo.toString();
+      if (proyecciones[dist_actual] !== undefined) {
+        let color = "";
+        switch(muestra){
+          case 15:
+            color = '#a8d18d';
+            break;
+          case 20:
+            color = '#0d47a1';
+            break;
+          case 40:
+            color = '#fea4a4';
+            break;
+          case 50:
+            color = '#ff0000'
+        }
+        layer.setStyle({ fillColor: color });
+        layer.setStyle({ fillOpacity: 0.5 });
+        let label = "<b>Porcentaje: </b>" + proyecciones[dist_actual].porcentaje;
+        layer.bindTooltip(label);
+      }
+    });
+  });
 }
 
 function configurar_mapa(map, datos_json) {
@@ -910,6 +945,22 @@ function setLayers(selectedLayers){
       if (_selectedLayer[index] == LAYER_FUENTES && _layerFuentes == null){
         cargarFuentesRadiactivas(map);
       }
+
+      if (_selectedLayer[index] == LAYER_PROY_DIST_15){
+        ponerProyecciones(15);
+      }
+
+      if (_selectedLayer[index] == LAYER_PROY_DIST_20){
+        ponerProyecciones(20);
+      }
+
+      if (_selectedLayer[index] == LAYER_PROY_DIST_40){
+        ponerProyecciones(40);
+      }
+
+      if (_selectedLayer[index] == LAYER_PROY_DIST_50){
+        ponerProyecciones(50);
+      }
   
     });
   } else {
@@ -957,6 +1008,9 @@ function getDatosPais(){
 }
 
 function removeLayers(layers) {
+  _layer_actual.eachLayer(function (layer) {
+    layer.unbindTooltip();
+  });
   if (layers.includes(LAYER_SEDES.toString()) && _layerSedes != null) {
     map.removeLayer(_layerSedes);
     _layerSedes = null;

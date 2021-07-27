@@ -364,7 +364,7 @@ def obtenerDatosPais(fecha):
 
 def getPredicciones(mes, semana):
     query = """
-        SELECT codigo_distrito, activos, grupo from prediccion_distrito WHERE mes = {mes} and semana = '{semana}'
+        SELECT codigo_distrito, activos, grupo as socio from prediccion_distrito WHERE mes = {mes} and semana = '{semana}'
     """
 
     conn = getMyConnection()
@@ -379,6 +379,27 @@ def getPredicciones(mes, semana):
         tupla = {}
         tupla['activos'] = row[1]
         tupla['socio'] = row[2]
+        datos[str(row[0])] = tupla
+
+    return datos
+
+def obtenerProyecciones(fecha, muestra):
+    query = """
+        SELECT codigo_dta, porcentaje, muestra from proyeccion_distrito WHERE fecha_inicio <= '{fecha}' and fecha_fin > '{fecha}' and muestra = {muestra}
+    """
+
+    conn = getMyConnection()
+    cursor = conn.cursor()
+    
+    cursor.execute( query.format(fecha = fecha, muestra = muestra) )
+    records = cursor.fetchall()
+
+    datos = {}
+
+    for row in records:
+        tupla = {}
+        tupla['porcentaje'] = row[1]
+        tupla['muestra'] = row[2]
         datos[str(row[0])] = tupla
 
     return datos

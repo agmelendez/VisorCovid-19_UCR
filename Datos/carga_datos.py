@@ -5,11 +5,12 @@ import pandas as pd
 import requests
 import numpy as np
 from datetime import date, datetime
+import geopandas as gpd
 from notificador import Notificador
 import sys
         
 # Establecer en True para cargar todos los datos desde cero, e imprimir logs
-DEBUG = False
+DEBUG = True
 
 def consoleLog(text):
     if DEBUG:
@@ -469,14 +470,15 @@ def main(argv):
 def cargarDatos(archivoCovid, archivoEscenarios):
     print("Inicio de carga: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     try:
-        ultimaFecha = getLastDate()[0].strftime('%Y-%m-%d')
-        consoleLog("Ultima fecha en la BD: " + str(ultimaFecha))
-        cargarCasos(archivoCovid, ultimaFecha)
-        archivoCasosDiarios = pd.read_excel(archivoCovid, header= None, sheet_name="DistritosNuevos")
-        cargarCasosDiarios(archivoCasosDiarios, ultimaFecha)
-        cargarDatosPais(archivoCovid, ultimaFecha)
-        cargarCoefVar(archivoCovid, ultimaFecha)
-        cargarEscenarios(archivoEscenarios)
+        # ultimaFecha = getLastDate()[0].strftime('%Y-%m-%d')
+        # consoleLog("Ultima fecha en la BD: " + str(ultimaFecha))
+        # cargarCasos(archivoCovid, ultimaFecha)
+        # archivoCasosDiarios = pd.read_excel(archivoCovid, header= None, sheet_name="DistritosNuevos")
+        # cargarCasosDiarios(archivoCasosDiarios, ultimaFecha)
+        # cargarDatosPais(archivoCovid, ultimaFecha)
+        # cargarCoefVar(archivoCovid, ultimaFecha)
+        # cargarEscenarios(archivoEscenarios)
+        cargarCapasProyecciones()
     except Exception as e:
         consoleLog("Ha ocurrido un error al cargar los datos: " + str(e))
         noti = Notificador()
@@ -554,6 +556,33 @@ def cargarDatosPais(archivo, ultimaFecha):
         raise
             
     closeConnection(conn)
+
+def cargarCapasProyecciones():
+    df = gpd.read_file('50 Dist 20 al 26 Jun.geojson', ignore_geometry=True)
+
+    try:
+        conn = getAuthConnection()
+        cursor = conn.cursor()
+        for row in range(len(df)):
+            queryGrupo = """
+                    INSERT INTO proyeccion_distrito (codigo_dta, porcentaje, fecha_inicio, fecha_fin, muestra)
+                    VALUES ({codigo_dta}, {porcentaje}, '{fecha_inicio}', '{fecha_fin}', {muestra}) ON CONFLICT DO NOTHING;
+                """
+
+            cursor.execute(queryGrupo.format(
+                codigo_dta = df.iloc[row]['codigo_dta'],
+                porcentaje = df.iloc[row, -1],
+                fecha_inicio = '2021-06-20',
+                fecha_fin = '2021-06-26',
+                muestra= 50
+            ))
+
+            conn.commit()
+        closeConnection(conn)
+
+    except Exception as e:
+        consoleLog("Ha ocurrido un error al cargar los datos: " + str(e))
+        raise
 
 if __name__ == "__main__":
     if not main(sys.argv[1:]):
