@@ -7,9 +7,11 @@ import scrapy
 
 
 class VacunasItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    total_vacunas = scrapy.Field()
     primera_dosis = scrapy.Field()
     segunda_dosis = scrapy.Field()
     fecha = scrapy.Field()
+
+class VacunasCNEItem(scrapy.Item):
+    fecha = scrapy.Field()
+    dosis = scrapy.Field()
+    laboratorio = scrapy.Field()
