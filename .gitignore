@@ -10,3 +10,4 @@ Datos/datos_log.txt
 covid_project/covid_env
 crawler/venv
 .bash_history
+*.tar
