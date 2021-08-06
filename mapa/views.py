@@ -83,10 +83,12 @@ def get_json_indigenas( request ):
 	
 	return JsonResponse( response )
 	
-	
 def home ( request ):
 	context = {'geoJson':get_prov() }
 	return render(request, 'mapa/geo3.html', context)
+
+def analytics(request):
+    return render(request, 'mapa/analytics.html')
 	
 def getPrediccionesMapa(request):
     response = {}
