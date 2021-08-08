@@ -41,6 +41,7 @@ var _legend;
 var _fechaActual;
 var _layer_actual;
 var _fechasValidas = [];
+var _wide_screen;
 
 provincias = new L.FeatureGroup();
 provLayer = null;
@@ -598,28 +599,47 @@ let urltile = [u0, u1, u2];
 var contri =
   '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+window.onresize = function() {
+  if (!window.matchMedia("(min-width: 1700px)").matches) {
+    if(_wide_screen) {
+      _wide_screen = false;
+      window.location.reload();
+    }
+  } else {
+    if(!_wide_screen){
+      window.location.reload();
+    }
+  }
+}
+
 /**INICIALIZADOR**/
 window.onload = function () {
   $.noConflict();
 
-  /** Código para hacer las columnas resizables. */
+  /** Código para hacer las columnas resizables, solo si el viewport es de 1700px de ancho o más. */
   const GUTTER_SIZE = 2;
 
-  const gutterStyle = (dimension) => ({
-    "flex-basis": `${GUTTER_SIZE}px`,
-  });
+  if (window.matchMedia("(min-width: 1700px)").matches) {
+    _wide_screen = true;
 
-  const elementStyle = (dimension, size, gutSize, i) => ({
-    "flex-basis": `calc(${size}% - ${GUTTER_SIZE}px)`,
-    width: size + "%",
-  });
+    const gutterStyle = (dimension) => ({
+      "flex-basis": `${GUTTER_SIZE}px`,
+    });
 
-  Split(["#col-mapa", "#col-graficos", "#col-indicadores"], {
-    sizes: [35, 35, 30],
-    minSize: 10,
-    elementStyle,
-    gutterStyle,
-  });
+    const elementStyle = (dimension, size, gutSize, i) => ({
+      "flex-basis": `calc(${size}% - ${GUTTER_SIZE}px)`,
+      width: size + "%",
+    });
+
+    Split(["#col-mapa", "#col-graficos", "#col-indicadores"], {
+      sizes: [38, 25, 33],
+      minSize: 10,
+      elementStyle,
+      gutterStyle,
+    });
+  } else {
+    _wide_screen = false;
+  }
 
   initMap();
 

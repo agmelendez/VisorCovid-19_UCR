@@ -12,7 +12,7 @@ body {
 }
 
 #my_map {
-  height: 70vh;
+  height: 70%;
   width: 100%;
 }
 
@@ -24,26 +24,22 @@ body {
 }
 
 .container-fluid {
-  /*border: 1px solid blue;/**/
   max-height: 99%;
   overflow: auto;
-  overflow-y: hidden; /*elimina el scroll vertical*/
+  overflow-y: hidden;
 }
 .fila1 {
-  height: 80px;
   border-bottom: 5px solid #0d47a1;
   padding-bottom: 5px;
 }
 
-.row fila1 {
+.row .fila1 {
   margin-top: 0;
   margin-bottom: 0;
 }
 
 .fila2 {
-  /*height:80vh ; /*20diego*/
   padding-top: 1%;
-  /*border: 1px solid blue;*/
 }
 
 #dona1 {
@@ -58,40 +54,11 @@ body {
 #dona4 {
   border: 1px solid blue;
 }
-/*
-.cont_graficos{
-	padding-top:10px;
-	border-left: 2px solid #0d47a1;
-	border-right: 2px solid #0d47a1;
-}*/
 
 .donas {
   overflow: hidden;
-  /*margin-top: -20px !important;*/
   background: #ffffff00 !important;
 }
-
-#col-graficos .graficos {
-  /*20diego*/
-  max-width: 23vw;
-  height: 20vh;
-  /*border: 1px solid red;/**/
-  padding-top: 0px;
-}
-
-#col-graficos {
-  /*20diego*/
-  width: 29vw;
-}
-#col-graficos .row {
-  /*20diego*/
-  margin-left: 0px !important;
-  margin-right: 0px !important;
-}
-
-/*.main-svg{
-	max-height: 220px !important;
-}*/
 
 .flotar-der {
   margin-right: 1%;
@@ -118,20 +85,12 @@ body {
   color: #d4d4d4;
 }
 
-/*-----------------*/
 .modebar {
   display: none !important;
 }
 
-/*#grafico1 plot-container {
-    width: 100%;
-    height: 200px;
-}*/
-
 #pais svg {
   background-color: SkyBlue;
-  /*height:50vh;
-	width:100%;*/
 }
 
 .selectores .col-6 {
@@ -152,42 +111,6 @@ body {
 #mapid {
   height: 380px;
   width: 380px;
-}
-
-.row.fila2 {
-  overflow-x: auto;
-}
-
-/*#grafico3 .plot-container.plotly{
-	max-width:55%;
-	margin:auto;
-}*/
-
-/*#grafico3 .main-svg{
-	background-color: unset !important;
-}*/
-/*
-#dona1 .svg-container{
-	height:unset !important;
-}
-
-#dona1 .plot-container.plotly{
-	max-width:55%;
-	margin:auto;
-}
-
-#dona1  .main-svg{
-	background-color: unset !important;
-}
-
-#dona1  .svg-container{
-	height:unset !important;
-}*/
-/*-----------------*/
-
-.flex {
-  display: flex;
-  flex-direction: row;
 }
 
 .gutter {
@@ -304,7 +227,6 @@ body {
 }
 
 .cases-info{
-  max-height: 55px;
   padding-top: 2px;
 }
 
@@ -357,12 +279,6 @@ ul.multiselect-container {
   background-color: lightsteelblue;
 }
 
-@media screen and (max-width: 1538px){
-  .big-logo{
-    display:none;
-  }
-}
-
 .toast{
   opacity: 1 !important;
   font-size: 1rem;
@@ -372,4 +288,10 @@ ul.multiselect-container {
   font-size: 1.3rem !important;
 }
 
-/*----------------FECHA-----------------*/
+@media screen and (max-width: 1700px) {
+  #col-mapa, #col-graficos, #col-indicadores {
+    border-bottom: 3px solid #0d47a1;
+    padding-bottom: 5px;
+    padding-top: 5px;
+  }
+}
