@@ -2,7 +2,7 @@ html,
 body {
   height: 100vh;
   margin: 0;
-  font-size: 0.8rem;
+  font-size:1.2em;
 }
 
 body {
@@ -129,6 +129,7 @@ body {
 
 #cases-dashboard .label {
   width: 100%;
+  word-break: break-word;
 }
 
 #cases-dashboard2 .col {
@@ -196,7 +197,7 @@ body {
 }
 
 .cases-info .label {
-  font-size: 1rem;
+  font-size: 1.2rem;
   margin-bottom: 0 !important;
   width: 100%;
   text-align: center;
@@ -237,12 +238,13 @@ body {
 }
 
 .BubbleContent {
-  font-size: 1.5 rem;
+  font-size: 1.5rem;
   color: black;
 }
 
 #info {
-  font-size: 1rem;
+  word-break: break-word;
+  font-size: 1.2em;
 }
 
 #cases-dashbdashboard .col {
@@ -285,7 +287,7 @@ ul.multiselect-container {
 }
 
 #selectorFecha > *{
-  font-size: 1.3rem !important;
+  font-size: 1.3rem;
 }
 
 @media screen and (max-width: 1700px) {
@@ -293,5 +295,11 @@ ul.multiselect-container {
     border-bottom: 3px solid #0d47a1;
     padding-bottom: 5px;
     padding-top: 5px;
+  }
+}
+
+@media screen and (min-width: 1701px){
+  html, body{
+    font-size: 0.8rem;
   }
 }
