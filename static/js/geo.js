@@ -1,4 +1,4 @@
-/*------------------------------*/ /* Constantes globales */
+/* Constantes globales */
 const SELECTED_DISTRICT_COLOR = "green";
 const PROVINCE_SELECT_OPACITY = "0.4";
 const CANTON_SELECT_OPACITY = "0.7";
@@ -43,6 +43,7 @@ var _layer_actual;
 var _fechasValidas = [];
 var _wide_screen;
 
+/* Inicialización de variables */
 provincias = new L.FeatureGroup();
 provLayer = null;
 cantones = new L.FeatureGroup();
@@ -55,6 +56,22 @@ _layerMorbilidad = null;
 var map = null;
 var circulosMorbilidad = null;
 
+/* Capa base del mapa */
+var u0 =
+  "https://{s}.tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
+  
+var u1 =
+  "https://{s}.tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
+
+var u2 =
+  "https://{s}.tile.jawg.io/jawg-terrain/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
+
+var urltile = [u0, u1, u2];
+
+var contri =
+  '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/* Configuración de Toastr */
 toastr.options = {
   "closeButton": false,
   "debug": false,
@@ -74,34 +91,301 @@ toastr.options = {
   "tapToDismiss": true
 }
 
+/**INICIALIZADOR**/
+window.onload = function () {
+  $.noConflict();
+
+  /** Código para hacer las columnas ajustables, solo si el viewport es de 1700px de ancho o más. */
+  const GUTTER_SIZE = 2;
+
+  if (window.matchMedia("(min-width: 1700px)").matches) {
+    _wide_screen = true;
+
+    const gutterStyle = (dimension) => ({
+      "flex-basis": `${GUTTER_SIZE}px`,
+    });
+
+    const elementStyle = (dimension, size, gutSize, i) => ({
+      "flex-basis": `calc(${size}% - ${GUTTER_SIZE}px)`,
+      width: size + "%",
+    });
+
+    Split(["#col-mapa", "#col-graficos", "#col-indicadores"], {
+      sizes: [38, 25, 33],
+      minSize: 10,
+      elementStyle,
+      gutterStyle,
+    });
+  } else {
+    _wide_screen = false;
+  }
+
+  initMap();
+
+  let url = "get_leaflet_dist";
+
+  $.get("getValidDates", function(result){
+    _fechasValidas = result.fechas;
+    $.get("getUltimaFecha", function(result){
+      _ultimaFecha = result.date[0];
+      _fechaActual = _ultimaFecha;
+      getDatosPais();
+      changeGauge(null, null, null);
+      $.get(url, { date: _ultimaFecha }, function (result) {
+        let datos_json = JSON.parse("[" + result["capas"] + "]");
+        configurar_mapa(map, datos_json);
+        $('input[name="datepicker"]').daterangepicker(
+          {
+            singleDatePicker: true,
+            locale: {
+              format: "DD/MM/YYYY",
+              separator: " - ",
+              applyLabel: "Aceptar",
+              cancelLabel: "Cancelar",
+              fromLabel: "Desde",
+              toLabel: "Hasta",
+              customRangeLabel: "Personalizado",
+              weekLabel: "S",
+              daysOfWeek: ["D", "L", "K", "M", "J", "V", "S"],
+              monthNames: [
+                "Enero",
+                "Febrero",
+                "Marzo",
+                "Abril",
+                "Mayo",
+                "Junio",
+                "Julio",
+                "Agosto",
+                "Septiembre",
+                "Octubre",
+                "Noviembre",
+                "Diciembre",
+              ],
+              firstDay: 1
+            },
+            isInvalidDate: function(ele){
+              /* Se encarga de deshabilitar las fechas en las que no hay datos en la base de datos. */
+              let currDate = moment(ele._d).format('YYYY-MM-DD');
+              return !_fechasValidas.includes(currDate);
+            },
+            startDate: parseDate(_ultimaFecha),
+            minDate: "06/03/2020",
+            maxDate: parseDate(_ultimaFecha),
+          },
+          function (start, end, label) {
+            _fechaActual = start.format("YYYY-MM-DD");
+            setDate(_fechaActual);
+            getDatosPais();
+            $("#mapas").multiselect('enable');
+            $("#mapas").multiselect('deselectAll');
+            $("#mapas").multiselect('rebuild');
+            $("#mapas").multiselect('refresh');
+            $("#provincias").removeAttr('disabled');
+            $("#cantones").removeAttr('disabled');
+            $("#distritos").removeAttr('disabled');
+            _selectedLayer = null;
+          }
+        );
+      });
+    });
+  });
+
+  /* Para cada valor seleccionado en el multiselect, pinta los colores o elementos de la capa correspondiente */
+  $("#mapas").on("change", function () {
+    let temp = $(this).val();
+    setLayers(temp);
+    if(_selectedLayer != null && _selectedLayer.length > 0){
+      $("#provincias").attr('disabled', 'disabled');
+      $("#cantones").attr('disabled', 'disabled');
+      $("#distritos").attr('disabled', 'disabled');
+    } else {
+      $("#provincias").removeAttr('disabled');
+      $("#cantones").removeAttr('disabled');
+      $("#distritos").removeAttr('disabled');
+    }
+  });
+
+  $("#mapas").multiselect({
+    includeSelectAllOption: true,
+    optionClass: function (element) {
+      var value = $(element).val();
+      if (value % 2 == 0) {
+        return "odd"; // reversed
+      } else {
+        return "even"; // reversed
+      }
+    },
+    buttonContainer: '<div class="" />',
+    buttonClass: "form-control",
+    nonSelectedText: "Seleccione",
+    allSelectedText: "Todas",
+    selectAllText: "Todas",
+    nSelectedText: "seleccionadas",
+    numberDisplayed: 1,
+  });
+
+  /*Coloca la fecha en el formato DD/MM/YYYY HH:MM:SS */
+  function timerDaemon() {
+    var today = new Date();
+    $("#hora").html(
+      today.getDate() +
+        "/" +
+        (today.getMonth() + 1) +
+        "/" +
+        today.getFullYear() +
+        " " +
+        (today.getHours() < 10 ? "0" + today.getHours() : today.getHours()) +
+        ":" +
+        (today.getMinutes() < 10
+          ? "0" + today.getMinutes()
+          : today.getMinutes()) +
+        ":" +
+        (today.getSeconds() < 10
+          ? "0" + today.getSeconds()
+          : today.getSeconds())
+    );
+  }
+  setInterval(timerDaemon, 1000);
+
+  /**
+   * Colorea de azul la provincia seleccionada en el select.
+   * Baja la opacidad de las demás provincias para resaltar la seleccionada.
+   * Limpia los datos de variables globales cuando ya no se van a usar.
+   */
+
+  $("#provincias").on("change", function () {
+    if (_selectedLayer != null && _selectedLayer.length > 0) {
+      $(this).val("none");
+      toastr.warning("Elimine las vistas del mapa antes de seleccionar una provincia.", "Advertencia");
+      return;
+    }
+    let originalSelectedProvince = $("#provincias").val();
+    _selectedCanton = null;
+    let selectedProvince = $("#provincias")
+      .val()
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (selectedProvince != "NONE") {
+      _selectedProvince = selectedProvince;
+      $("#mapas").multiselect('disable');
+    } else {
+      _selectedProvince = null;
+      $("#mapas").multiselect('enable')
+    }
+    _layer_actual.eachLayer(function (layer) {
+      if (layer.feature.properties.proinfo !== undefined) {
+        nombP = layer.feature.properties.proinfo;
+        if (nombP.toUpperCase() == selectedProvince) {
+          layer.setStyle({ fillColor: "rgba(0, 0, 255, 0.3)" });
+          layer.setStyle({ fillOpacity: 0.8 });
+        } else {
+          layer.setStyle({ fillColor: "rgba(255, 0, 0, 0.0)" });
+        }
+      }
+    });
+    if (selectedProvince != "NONE") {
+      changeCantones(originalSelectedProvince);
+      changeGauge(selectedProvince);
+    } else {
+      _selectedProvince = null;
+      changeGauge("");
+    }
+    clearSelectList($("#cantones"), "none", "-- Seleccione provincia --");
+    clearSelectList($("#distritos"), "none", "-- Seleccione cantón --");
+    _selectedCanton = null;
+    _selectedDistrito = null;
+  });
+
+  /*check orden o animado*/
+  $("input:radio[name=radio-group-1-bg]").change(function () {
+    let value = this.value;
+
+    if (value == "orden") {
+      tipo = 1;
+    } else {
+      tipo = 2;
+    }
+    changeGauge(_selectedProvince, _selectedCanton, _selectedDistrito, tipo)
+  });
+
+  $("input:radio[name='radio_sems']").change(function () {
+    let eleccion = $(".eleccion input:checked").val();
+    if(eleccion == 'sem0'){
+      $("#provincias").removeAttr('disabled');
+      $("#cantones").removeAttr('disabled');
+      $("#distritos").removeAttr('disabled');
+    } else {
+      $("#cases-dashboard p.data:not(.pais)").html(
+        "--"
+      );
+      getPredicciones(eleccion);
+      $("#provincias").attr('disabled', 'disabled');
+      $("#cantones").attr('disabled', 'disabled');
+      $("#distritos").attr('disabled', 'disabled');
+    }
+  });
+
+  $("#cantones").on("change", function () {
+    if (_selectedLayer != null && _selectedLayer.length > 0) {
+      $(this).val("none");
+      toastr.warning("Elimine las vistas del mapa antes de seleccionar un cantón.", "Advertencia");
+      return;
+    }
+    let selectedCanton = $("#cantones")
+      .val()
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    _selectedCanton = selectedCanton;
+    changeDistritos(_selectedCanton);
+    _layer_actual.eachLayer(function (layer) {
+      if (
+        layer.feature.properties.proinfo !== undefined &&
+        layer.feature.properties.cantinfo !== "--Todos--"
+      ) {
+        nombP = layer.feature.properties.proinfo;
+        nombC = layer.feature.properties.cantinfo;
+
+        if (nombP.toUpperCase() == _selectedProvince) {
+          layer.setStyle({ fillColor: "rgba(0, 0, 255, 0.3)" });
+          layer.setStyle({ fillOpacity: 0.8 });
+          if (nombC.toUpperCase() == selectedCanton) {
+            layer.setStyle({ fillColor: "rgba(255, 0, 0, 0.5)" });
+          }
+        } else {
+          layer.setStyle({ fillColor: COLOR_TRANSPARENT });
+        }
+      } else {
+        _selectedCanton = null;
+      }
+    });
+  });
+
+  $("#distritos").on("change", function () {
+    if (_selectedLayer != null && _selectedLayer.length > 0) {
+      $(this).val("none");
+      toastr.warning("Elimine las vistas del mapa antes de seleccionar un distrito.", "Advertencia");
+      return;
+    }
+    let selectedDistrito = $("#distritos")
+      .val()
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    _selectedDistrito = selectedDistrito;
+    seleccionarDistrito(_selectedDistrito);
+    changeGauge(_selectedProvince, _selectedCanton, selectedDistrito);
+  });
+
+  loadXMLMap("getMap");
+
+  setUpCreditsBubbles();
+}; //FIN INICIALIZADOR
+
 $("input[data-provide=datepicker]").on("click", function () {
   $(".datepicker.datepicker-dropdown").css("z-index", "1000");
 });
-
-
-/** Encuentra la posición longitud latitud para poner punto en el mapa**/
-function initGeolocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(success, fail);
-  } else {
-    alert("Su navegador no permite geolocalización");
-  }
-}
-
-function success(position) {}
-
-function fail() {
-  // Could not obtain location
-}
-
-function cambiar_canton(map) {
-  let url = "get_leaflet_cant";
-
-  $.get(url, function (result) {
-    let datos_json = JSON.parse("[" + result["capas"] + "]");
-    configurar_mapa(map, datos_json);
-  });
-}
 
 /**
  * Obtiene las predicciones para todos los cantones en una semana dada, en el mes de la fecha seleccionada en el datepicker,
@@ -416,8 +700,6 @@ function ponerIndigenas(map) {
   });
 }
 
-
-
 // function to get value from property "name" to populate for the popup
 function onEachSede(feature, layer) {
   layer.bindPopup(feature.properties.nombre);
@@ -429,11 +711,6 @@ function onEachHogar(feature, layer) {
 
 function onEachIndigena(feature, layer) {
   layer.bindPopup(feature.properties.pueblo);
-}
-
-// filter function, change from "parking" to "stadium", to show only one marker on the map
-function soffParkingFilter(feature, layer) {
-  if (feature.properties.parking === "parking") return true;
 }
 
 function poner_sedes_mapa(map, sedesJSON) {
@@ -464,7 +741,6 @@ function poner_sedes_mapa(map, sedesJSON) {
   if (_layerSedes != null) _layerSedes.addData(sedesJSON);
   map.addLayer(_layerSedes);
 }
-
 
 function poner_hogares_mapa(map, hogarJSON) {
   var myIcon = L.icon({
@@ -578,26 +854,8 @@ function configurar_mapa(map, datos_json) {
     onEachFeature: onEachFeature,
   }).addTo(provincias);
   map.addLayer(provincias);
-  initGeolocation(map);
   $.LoadingOverlay("hide");
 }
-
-var u0 =
-  "https://{s}.tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
-//'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-var u1 =
-  "https://{s}.tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
-//'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-var u2 =
-  "https://{s}.tile.jawg.io/jawg-terrain/{z}/{x}/{y}{r}.png?access-token=XF87Xv2CrTh3C1C4ApZvDyWQTZoiSaVBGvmI0cG5tXJqXj5AVPxAQSSP20JXrjFw";
-//'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-let urltile = [u0, u1, u2];
-
-var contri =
-  '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 window.onresize = function() {
   if (!window.matchMedia("(min-width: 1700px)").matches) {
@@ -611,302 +869,6 @@ window.onresize = function() {
     }
   }
 }
-
-/**INICIALIZADOR**/
-window.onload = function () {
-  $.noConflict();
-
-  /** Código para hacer las columnas resizables, solo si el viewport es de 1700px de ancho o más. */
-  const GUTTER_SIZE = 2;
-
-  if (window.matchMedia("(min-width: 1700px)").matches) {
-    _wide_screen = true;
-
-    const gutterStyle = (dimension) => ({
-      "flex-basis": `${GUTTER_SIZE}px`,
-    });
-
-    const elementStyle = (dimension, size, gutSize, i) => ({
-      "flex-basis": `calc(${size}% - ${GUTTER_SIZE}px)`,
-      width: size + "%",
-    });
-
-    Split(["#col-mapa", "#col-graficos", "#col-indicadores"], {
-      sizes: [38, 25, 33],
-      minSize: 10,
-      elementStyle,
-      gutterStyle,
-    });
-  } else {
-    _wide_screen = false;
-  }
-
-  initMap();
-
-  let url = "get_leaflet_dist";
-
-  $.get("getValidDates", function(result){
-    _fechasValidas = result.fechas;
-    $.get("getUltimaFecha", function(result){
-      _ultimaFecha = result.date[0];
-      _fechaActual = _ultimaFecha;
-      getDatosPais();
-      changeGauge(null, null, null);
-      $.get(url, { date: _ultimaFecha }, function (result) {
-        let datos_json = JSON.parse("[" + result["capas"] + "]");
-        configurar_mapa(map, datos_json);
-        $('input[name="datepicker"]').daterangepicker(
-          {
-            singleDatePicker: true,
-            locale: {
-              format: "DD/MM/YYYY",
-              separator: " - ",
-              applyLabel: "Aceptar",
-              cancelLabel: "Cancelar",
-              fromLabel: "Desde",
-              toLabel: "Hasta",
-              customRangeLabel: "Personalizado",
-              weekLabel: "S",
-              daysOfWeek: ["D", "L", "K", "M", "J", "V", "S"],
-              monthNames: [
-                "Enero",
-                "Febrero",
-                "Marzo",
-                "Abril",
-                "Mayo",
-                "Junio",
-                "Julio",
-                "Agosto",
-                "Septiembre",
-                "Octubre",
-                "Noviembre",
-                "Diciembre",
-              ],
-              firstDay: 1
-            },
-            isInvalidDate: function(ele){
-              /* Se encarga de deshabilitar las fechas en las que no hay datos en la base de datos. */
-              let currDate = moment(ele._d).format('YYYY-MM-DD');
-              return !_fechasValidas.includes(currDate);
-            },
-            startDate: parseDate(_ultimaFecha),
-            minDate: "06/03/2020",
-            maxDate: parseDate(_ultimaFecha),
-          },
-          function (start, end, label) {
-            _fechaActual = start.format("YYYY-MM-DD");
-            setDate(_fechaActual);
-            getDatosPais();
-            $("#mapas").multiselect('enable');
-            $("#mapas").multiselect('deselectAll');
-            $("#mapas").multiselect('rebuild');
-            $("#mapas").multiselect('refresh');
-            $("#provincias").removeAttr('disabled');
-            $("#cantones").removeAttr('disabled');
-            $("#distritos").removeAttr('disabled');
-            _selectedLayer = null;
-          }
-        );
-      });
-    });
-  });
-
-  $("#borrar").click(function () {
-    cambiar_canton(map);
-  });
-
-  /* Para cada valor seleccionado en el multiselect, pinta los colores o elementos de la capa correspondiente */
-  $("#mapas").on("change", function () {
-    let temp = $(this).val();
-    setLayers(temp);
-    if(_selectedLayer != null && _selectedLayer.length > 0){
-      $("#provincias").attr('disabled', 'disabled');
-      $("#cantones").attr('disabled', 'disabled');
-      $("#distritos").attr('disabled', 'disabled');
-    } else {
-      $("#provincias").removeAttr('disabled');
-      $("#cantones").removeAttr('disabled');
-      $("#distritos").removeAttr('disabled');
-    }
-  });
-
-  $("#mapas").multiselect({
-    includeSelectAllOption: true,
-    optionClass: function (element) {
-      var value = $(element).val();
-      if (value % 2 == 0) {
-        return "odd"; // reversed
-      } else {
-        return "even"; // reversed
-      }
-    },
-    buttonContainer: '<div class="" />',
-    buttonClass: "form-control",
-    nonSelectedText: "Seleccione",
-    allSelectedText: "Todas",
-    selectAllText: "Todas",
-    nSelectedText: "seleccionadas",
-    numberDisplayed: 1,
-  });
-
-  /*Coloca la fecha en el formato DD/MM/YYYY HH:MM:SS */
-  function timerDaemon() {
-    var today = new Date();
-    $("#hora").html(
-      today.getDate() +
-        "/" +
-        (today.getMonth() + 1) +
-        "/" +
-        today.getFullYear() +
-        " " +
-        (today.getHours() < 10 ? "0" + today.getHours() : today.getHours()) +
-        ":" +
-        (today.getMinutes() < 10
-          ? "0" + today.getMinutes()
-          : today.getMinutes()) +
-        ":" +
-        (today.getSeconds() < 10
-          ? "0" + today.getSeconds()
-          : today.getSeconds())
-    );
-  }
-  setInterval(timerDaemon, 1000);
-
-  /**
-   * Colorea de azul la provincia seleccionada en el select.
-   * Baja la opacidad de las demás provincias para resaltar la seleccionada.
-   * Limpia los datos de variables globales cuando ya no se van a usar.
-   */
-
-  $("#provincias").on("change", function () {
-    if (_selectedLayer != null && _selectedLayer.length > 0) {
-      $(this).val("none");
-      toastr.warning("Elimine las vistas del mapa antes de seleccionar una provincia.", "Advertencia");
-      return;
-    }
-    let originalSelectedProvince = $("#provincias").val();
-    _selectedCanton = null;
-    let selectedProvince = $("#provincias")
-      .val()
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    if (selectedProvince != "NONE") {
-      _selectedProvince = selectedProvince;
-      $("#mapas").multiselect('disable');
-    } else {
-      _selectedProvince = null;
-      $("#mapas").multiselect('enable')
-    }
-    _layer_actual.eachLayer(function (layer) {
-      if (layer.feature.properties.proinfo !== undefined) {
-        nombP = layer.feature.properties.proinfo;
-        if (nombP.toUpperCase() == selectedProvince) {
-          layer.setStyle({ fillColor: "rgba(0, 0, 255, 0.3)" });
-          layer.setStyle({ fillOpacity: 0.8 });
-        } else {
-          layer.setStyle({ fillColor: "rgba(255, 0, 0, 0.0)" });
-        }
-      }
-    });
-    if (selectedProvince != "NONE") {
-      changeCantones(originalSelectedProvince);
-      changeGauge(selectedProvince);
-    } else {
-      _selectedProvince = null;
-      changeGauge("");
-    }
-    clearSelectList($("#cantones"), "none", "-- Seleccione provincia --");
-    clearSelectList($("#distritos"), "none", "-- Seleccione cantón --");
-    _selectedCanton = null;
-    _selectedDistrito = null;
-  });
-
-  /*check orden o animado*/
-  $("input:radio[name=radio-group-1-bg]").change(function () {
-    let value = this.value;
-
-    if (value == "orden") {
-      tipo = 1;
-    } else {
-      tipo = 2;
-    }
-    changeGauge(_selectedProvince, _selectedCanton, _selectedDistrito, tipo)
-  });
-
-  $("input:radio[name='radio_sems']").change(function () {
-    let eleccion = $(".eleccion input:checked").val();
-    if(eleccion == 'sem0'){
-      $("#provincias").removeAttr('disabled');
-      $("#cantones").removeAttr('disabled');
-      $("#distritos").removeAttr('disabled');
-    } else {
-      $("#cases-dashboard p.data:not(.pais)").html(
-        "--"
-      );
-      getPredicciones(eleccion);
-      $("#provincias").attr('disabled', 'disabled');
-      $("#cantones").attr('disabled', 'disabled');
-      $("#distritos").attr('disabled', 'disabled');
-    }
-  });
-
-  $("#cantones").on("change", function () {
-    if (_selectedLayer != null && _selectedLayer.length > 0) {
-      $(this).val("none");
-      toastr.warning("Elimine las vistas del mapa antes de seleccionar un cantón.", "Advertencia");
-      return;
-    }
-    let selectedCanton = $("#cantones")
-      .val()
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    _selectedCanton = selectedCanton;
-    changeDistritos(_selectedCanton);
-    _layer_actual.eachLayer(function (layer) {
-      if (
-        layer.feature.properties.proinfo !== undefined &&
-        layer.feature.properties.cantinfo !== "--Todos--"
-      ) {
-        nombP = layer.feature.properties.proinfo;
-        nombC = layer.feature.properties.cantinfo;
-
-        if (nombP.toUpperCase() == _selectedProvince) {
-          layer.setStyle({ fillColor: "rgba(0, 0, 255, 0.3)" });
-          layer.setStyle({ fillOpacity: 0.8 });
-          if (nombC.toUpperCase() == selectedCanton) {
-            layer.setStyle({ fillColor: "rgba(255, 0, 0, 0.5)" });
-          }
-        } else {
-          layer.setStyle({ fillColor: COLOR_TRANSPARENT });
-        }
-      } else {
-        _selectedCanton = null;
-      }
-    });
-  });
-
-  $("#distritos").on("change", function () {
-    if (_selectedLayer != null && _selectedLayer.length > 0) {
-      $(this).val("none");
-      toastr.warning("Elimine las vistas del mapa antes de seleccionar un distrito.", "Advertencia");
-      return;
-    }
-    let selectedDistrito = $("#distritos")
-      .val()
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    _selectedDistrito = selectedDistrito;
-    seleccionarDistrito(_selectedDistrito);
-    changeGauge(_selectedProvince, _selectedCanton, selectedDistrito);
-  });
-
-  loadXMLMap("getMap");
-
-  setUpCreditsBubbles();
-}; //FIN INICIALIZADOR
 
 function setLayers(selectedLayers){
   let removedLayers = $(_selectedLayer).not(selectedLayers).get();
